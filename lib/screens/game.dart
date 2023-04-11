@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/colors.dart';
 
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:flutter_tic_tac_toe/ad_helper/ad_helper.dart';
+
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
 
@@ -27,8 +30,97 @@ class _GameScreenState extends State<GameScreen> {
   int seconds = maxSeconds;
   Timer? timer;
 
+  InterstitialAd? _interstitialAd;
+  RewardedAd? _rewardedAd;
+
+  //load ad
+  @override
+  void initState(){
+    super.initState();
+
+    //load ad here...
+    _loadInterstitialAd();
+    _loadRewardedAd();
+  }
+
+  void _loadInterstitialAd() {
+    InterstitialAd.load(
+      adUnitId: AdHelper.interstitialAdUnitId,
+      request: const AdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (ad) {
+          ad.fullScreenContentCallback = FullScreenContentCallback(
+            onAdDismissedFullScreenContent: (ad) {
+              setState(() {
+                ad.dispose();
+                _interstitialAd = null;
+                
+                resetTimer();
+              });
+            },
+          );
+
+          setState(() {
+            _interstitialAd = ad;
+          });
+        },
+        onAdFailedToLoad: (err) {
+          print('Failed to load an interstitial ad: ${err.message}');
+        },
+      ),
+    );
+  }
+
+  void _loadRewardedAd() {
+    RewardedAd.load(
+      adUnitId: AdHelper.rewardedAdUnitId,
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (ad) {
+          ad.fullScreenContentCallback = FullScreenContentCallback(
+            onAdDismissedFullScreenContent: (ad) {
+              setState(() {
+                ad.dispose();
+                _rewardedAd = null;
+                
+                resetTimer();
+              });
+            },
+          );
+
+          setState(() {
+            _rewardedAd = ad;
+          });
+        },
+        onAdFailedToLoad: (err) {
+          print('Failed to load a rewarded ad: ${err.message}');
+        },
+      ),
+    );
+  }
+
+  void _showInterstitialAd(){
+    _interstitialAd?.show();
+  }
+
+  void _showRewardedAd(){
+    _rewardedAd?.show(
+      onUserEarnedReward: (AdWithoutView ad, RewardItem rewardItem){
+        num amount = rewardItem.amount;
+        print('Reward amount: $amount');
+      }
+    );
+  }
+
+  @override
+  void dispose() {
+    _interstitialAd?.dispose();
+    _rewardedAd?.dispose();
+    super.dispose();
+  }
+
   static var customFontWhite = GoogleFonts.coiny(
-    textStyle: TextStyle(
+    textStyle: const TextStyle(
       color: Colors.white,
       letterSpacing: 3,
       fontSize: 28,
@@ -36,7 +128,7 @@ class _GameScreenState extends State<GameScreen> {
   );
 
   void startTimer() {
-    timer = Timer.periodic(Duration(seconds: 1), (_) {
+    timer = Timer.periodic(const Duration(seconds: 1), (_) {
       setState(() {
         if (seconds > 0) {
           seconds--;
@@ -64,45 +156,44 @@ class _GameScreenState extends State<GameScreen> {
           children: [
             Expanded(
               flex: 1,
-              child: Container(
-                  child: Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
-                        'Player O',
-                        style: customFontWhite,
-                      ),
-                      Text(
-                        oScore.toString(),
-                        style: customFontWhite,
-                      ),
-                    ],
+              Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    'Player O',
+                    style: customFontWhite,
                   ),
-                  SizedBox(width: 20),
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
-                        'Player X',
-                        style: customFontWhite,
-                      ),
-                      Text(
-                        xScore.toString(),
-                        style: customFontWhite,
-                      ),
-                    ],
+                  Text(
+                    oScore.toString(),
+                    style: customFontWhite,
                   ),
                 ],
-              )),
+              ),
+              const SizedBox(width: 20),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    'Player X',
+                    style: customFontWhite,
+                  ),
+                  Text(
+                    xScore.toString(),
+                    style: customFontWhite,
+                  ),
+                ],
+              ),
+                ],
+              ),
             ),
             Expanded(
               flex: 3,
               child: GridView.builder(
                   itemCount: 9,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 3,
                   ),
                   itemBuilder: (BuildContext context, int index) {
@@ -144,7 +235,7 @@ class _GameScreenState extends State<GameScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(resultDeclaration, style: customFontWhite),
-                    SizedBox(height: 10),
+                    const SizedBox(height: 10),
                     _buildTimer()
                   ],
                 ),
@@ -181,9 +272,10 @@ class _GameScreenState extends State<GameScreen> {
         displayXO[0] == displayXO[2] &&
         displayXO[0] != '') {
       setState(() {
-        resultDeclaration = 'Player ' + displayXO[0] + ' Wins!';
+        resultDeclaration = 'Player ${displayXO[0]} Wins!';
         matchedIndexes.addAll([0, 1, 2]);
         stopTimer();
+
         _updateScore(displayXO[0]);
       });
     }
@@ -193,9 +285,10 @@ class _GameScreenState extends State<GameScreen> {
         displayXO[3] == displayXO[5] &&
         displayXO[3] != '') {
       setState(() {
-        resultDeclaration = 'Player ' + displayXO[3] + ' Wins!';
+        resultDeclaration = 'Player ${displayXO[3]} Wins!';
         matchedIndexes.addAll([3, 4, 5]);
         stopTimer();
+
         _updateScore(displayXO[3]);
       });
     }
@@ -205,9 +298,10 @@ class _GameScreenState extends State<GameScreen> {
         displayXO[6] == displayXO[8] &&
         displayXO[6] != '') {
       setState(() {
-        resultDeclaration = 'Player ' + displayXO[6] + ' Wins!';
+        resultDeclaration = 'Player ${displayXO[6]} Wins!';
         matchedIndexes.addAll([6, 7, 8]);
         stopTimer();
+
         _updateScore(displayXO[6]);
       });
     }
@@ -217,9 +311,10 @@ class _GameScreenState extends State<GameScreen> {
         displayXO[0] == displayXO[6] &&
         displayXO[0] != '') {
       setState(() {
-        resultDeclaration = 'Player ' + displayXO[0] + ' Wins!';
+        resultDeclaration = 'Player ${displayXO[0]} Wins!';
         matchedIndexes.addAll([0, 3, 6]);
         stopTimer();
+
         _updateScore(displayXO[0]);
       });
     }
@@ -229,9 +324,10 @@ class _GameScreenState extends State<GameScreen> {
         displayXO[1] == displayXO[7] &&
         displayXO[1] != '') {
       setState(() {
-        resultDeclaration = 'Player ' + displayXO[1] + ' Wins!';
+        resultDeclaration = 'Player ${displayXO[1]} Wins!';
         matchedIndexes.addAll([1, 4, 7]);
         stopTimer();
+
         _updateScore(displayXO[1]);
       });
     }
@@ -241,9 +337,10 @@ class _GameScreenState extends State<GameScreen> {
         displayXO[2] == displayXO[8] &&
         displayXO[2] != '') {
       setState(() {
-        resultDeclaration = 'Player ' + displayXO[2] + ' Wins!';
+        resultDeclaration = 'Player ${displayXO[2]} Wins!';
         matchedIndexes.addAll([2, 5, 8]);
         stopTimer();
+
         _updateScore(displayXO[2]);
       });
     }
@@ -253,9 +350,10 @@ class _GameScreenState extends State<GameScreen> {
         displayXO[0] == displayXO[8] &&
         displayXO[0] != '') {
       setState(() {
-        resultDeclaration = 'Player ' + displayXO[0] + ' Wins!';
+        resultDeclaration = 'Player ${displayXO[0]} Wins!';
         matchedIndexes.addAll([0, 4, 8]);
         stopTimer();
+
         _updateScore(displayXO[0]);
       });
     }
@@ -265,15 +363,17 @@ class _GameScreenState extends State<GameScreen> {
         displayXO[6] == displayXO[2] &&
         displayXO[6] != '') {
       setState(() {
-        resultDeclaration = 'Player ' + displayXO[6] + ' Wins!';
+        resultDeclaration = 'Player ${displayXO[6]} Wins!';
         matchedIndexes.addAll([6, 4, 2]);
         stopTimer();
+        
         _updateScore(displayXO[6]);
       });
     }
     if (!winnerFound && filledBoxes == 9) {
       setState(() {
         resultDeclaration = 'Nobody Wins!';
+        stopTimer();
       });
     }
   }
@@ -285,6 +385,11 @@ class _GameScreenState extends State<GameScreen> {
       xScore++;
     }
     winnerFound = true;
+  }
+
+  void _startOver() {
+    oScore = 0;
+    xScore = 0;
   }
 
   void _clearBoard() {
@@ -299,47 +404,146 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildTimer() {
-    final isRunning = timer == null ? false : timer!.isActive;
+    final isRunning = timer == null ? false : timer!.isActive || filledBoxes == 9;
 
     return isRunning
-        ? SizedBox(
-            width: 100,
-            height: 100,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                CircularProgressIndicator(
-                  value: 1 - seconds / maxSeconds,
-                  valueColor: AlwaysStoppedAnimation(Colors.white),
-                  strokeWidth: 8,
-                  backgroundColor: MainColor.accentColor,
-                ),
-                Center(
-                  child: Text(
-                    '$seconds',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      fontSize: 50,
+        ? Column(
+          children: [
+            SizedBox(
+              width: 100,
+              height: 100,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  CircularProgressIndicator(
+                    value: 1 - seconds / maxSeconds,
+                    valueColor: const AlwaysStoppedAnimation(Colors.white),
+                    strokeWidth: 8,
+                    backgroundColor: MainColor.accentColor,
+                  ),
+                  Center(
+                    child: Text(
+                      '$seconds',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        fontSize: 50,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          )
-        : ElevatedButton(
+            const SizedBox(height: 20),
+            Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+              Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16)),
+                  onPressed: () {
+                    _showInterstitialAd();
+
+                    resetTimer();
+                    _clearBoard();
+                  },
+                  child: const Text(
+                    'Restart',
+                    style: TextStyle(fontSize: 20, color: Colors.black),
+                  ),
+                ),
+                ],
+              ),
+              const SizedBox(width: 20),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16)),
+                    onPressed: () {
+                      _showRewardedAd();
+
+                      resetTimer();
+                      _clearBoard();
+
+                      if (oTurn) {
+                        oScore++;
+                      } else if (!oTurn) {
+                        xScore++;
+                      } 
+                      
+                      stopTimer();
+                    },
+                    child: const Text(
+                      'Win',
+                      style: TextStyle(fontSize: 20, color: Colors.black),
+                    ),
+                  ),
+                ]
+              ),
+                ],
+              ),
+          ],
+        )
+        : Column(
+          children: [
+            attempts == 0
+            ? ElevatedButton(
             style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16)),
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16)),
             onPressed: () {
               startTimer();
               _clearBoard();
               attempts++;
             },
-            child: Text(
-              attempts == 0 ? 'Start' : 'Play Again!',
+            child: const Text(
+              'Start',
               style: TextStyle(fontSize: 20, color: Colors.black),
             ),
-          );
+          )
+          : ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16)),
+            onPressed: () {
+              resetTimer();
+              startTimer();
+              _clearBoard();
+              attempts++;
+            },
+            child: const Text(
+              'Play Again!',
+              style: TextStyle(fontSize: 20, color: Colors.black),
+            ),
+          ),
+          const SizedBox(height: 20),
+          attempts == 0 
+          ? const SizedBox.shrink()
+          : ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16)),
+            onPressed: () {
+              _showRewardedAd();
+
+              startTimer();
+              _clearBoard();
+              _startOver();
+              attempts = 0;
+            },
+            child: const Text(
+              'Start Over',
+              style: TextStyle(fontSize: 20, color: Colors.black),
+            ),
+          )
+          ]
+        );
   }
 }

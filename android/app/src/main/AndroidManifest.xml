@@ -1,9 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.flutter_tic_tac_toe">
    <application
-        android:label="flutter_tic_tac_toe"
+        android:label="Tic Tac Toe"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+
+         <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-4779220143200061~9554383162"/>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
